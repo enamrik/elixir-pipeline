@@ -52,6 +52,21 @@ defmodule ElixirPipeline.PipelineTest do
       Agent.stop(agent_id)
     end
 
+    test "add_step: output is optional when step returns elixir result format" do
+      some_id = "someId"
+      {:ok, agent_id} = Agent.start_link(fn -> nil end)
+
+      output = Pipeline.new()
+               |> Pipeline.add_value(:id, some_id)
+               |> Pipeline.add_step(fn [id: id] -> {:ok, Agent.update(agent_id, fn _ -> id end)} end, inputs: [:id])
+               |> Pipeline.to_result([:id])
+
+      assert Agent.get(agent_id, &(&1)) == some_id
+      assert output == {:ok, %{id: some_id}}
+
+      Agent.stop(agent_id)
+    end
+
     test "add_step: can override value" do
       output = Pipeline.new()
                |> Pipeline.add_value(:id, 1)
@@ -109,21 +124,3 @@ defmodule ElixirPipeline.PipelineTest do
     end
   end
 end
-
-
-#Pipeline.new()
-#|> Pipeline.add_value(:id, UUID.uuid4())
-#|> Pipeline.add_value(:barcode, barcode)
-#|> Pipeline.validate(barcode: [validators: [string()]])
-#|> Pipeline.add_step(&(find_by_barcode.(&1[:barcode])),         inputs: [:barcode],                outputs: [:barcode_item])
-#|> Pipeline.stop_if_not_nil(:barcode_item)
-#|> Pipeline.add_step(process_barcode(),                         inputs: [:barcode],                outputs: [:title,:image_refs])
-#|> Pipeline.add_step(process_metadata_from_title(),             inputs: [:title],                  outputs: [:clothing_type,:body_part])
-#|> Pipeline.add_step(preload_image_refs(),                      inputs: [:image_refs],             outputs: [:image_refs])
-#|> Pipeline.add_step(ensure_at_least_one_barcode_image(),       inputs: [:image_refs],             outputs: [])
-#|> Pipeline.add_step(process_image_refs(image_uploader),        inputs: [:id,:image_refs],         outputs: [:image_urls])
-#|> Pipeline.add_step(&to_barcode_item(&1),                      inputs: [:id,:title,
-#                                                                  :clothing_type,:body_part,
-#                                                                  :barcode,:image_urls],           outputs: [:barcode_item])
-#|> Pipeline.add_step(&(neo4j_store |> add(&1[:barcode_item])),  inputs: [:barcode_item],           outputs: [])
-#|> Pipeline.to_result([:barcode_item])

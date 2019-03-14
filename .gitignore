@@ -11,6 +11,7 @@ manifest.dat
 #IDE files
 .idea
 *.iml
+.elixir_ls
 
 # Environment Variables
 .env
