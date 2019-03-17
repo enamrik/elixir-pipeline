@@ -52,6 +52,14 @@ defmodule ElixirPipeline.PipelineTest do
       Agent.stop(agent_id)
     end
 
+    test "add_step: supports multiple outputs" do
+      output = Pipeline.new()
+               |> Pipeline.add_step(fn-> {:ok, %{id: 1, name: "joe"}} end, outputs: [:id, :name])
+               |> Pipeline.to_result([:id, :name])
+
+      assert output == {:ok, %{id: 1, name: "joe"}}
+    end
+
     test "add_step: output is optional when step returns elixir result format" do
       some_id = "someId"
       {:ok, agent_id} = Agent.start_link(fn -> nil end)

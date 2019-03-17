@@ -26,17 +26,28 @@ defmodule ElixirPipeline.Pipeline do
     end)
   end
 
-  @spec add_step(__MODULE__.t(), action, [{:inputs, [atom]}, {:output, atom}]) :: __MODULE__.t()
+  @spec add_step(__MODULE__.t(), action, [{:inputs, [atom]}, {:output, atom}, {:outputs, [atom]}]) :: __MODULE__.t()
   def add_step(%__MODULE__{} = pipeline, func, options \\ []) when is_function(func) do
     pipeline
     |> if_continue(fn %__MODULE__{} = pipeline ->
       output = pipeline
                |> call_func(Keyword.get(options, :inputs, []), func)
                |> map_success(fn return_value ->
-                  output_name = options |> Keyword.get(:output, :no_return)
-                  if output_name == :no_return,
-                     do: %{},
-                     else: %{output_name => return_value}
+                  output_name  = options |> Keyword.get(:output, nil)
+                  output_names = options |> Keyword.get(:outputs, [])
+                  output_names = if is_nil(output_name),
+                                  do:   output_names,
+                                  else: [output_name | output_names]
+
+                  cond do
+                    length(output_names) == 0 -> %{}
+                    length(output_names) == 1 -> %{Enum.at(output_names, 0) => return_value}
+                    length(output_names) > 1  -> Enum.reduce(
+                                                            output_names,
+                                                            %{},
+                                                            fn o_name, result -> result
+                                                                                  |> Map.put(o_name, Map.get(return_value, o_name)) end)
+                  end
               end)
 
       case output do
