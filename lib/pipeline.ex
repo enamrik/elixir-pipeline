@@ -5,6 +5,7 @@ defmodule ElixirPipeline.Pipeline do
   @type result_type :: :ok|{:ok, any}|{:error, any}
   @type action :: (-> :ok|{:ok, any}|{:error, any})|(map -> :ok|{:ok, any}|{:error, any})
 
+  import ElixirPipeline.AtomizeKeys, only: [atomize_keys: 1]
   alias ElixirPipeline.FuncExecutor
 
   @spec new() :: __MODULE__.t()
@@ -12,8 +13,9 @@ defmodule ElixirPipeline.Pipeline do
     %__MODULE__{props: %{}, halt: nil, collected_errors: []}
   end
 
-  @spec from_map(map) :: __MODULE__.t()
-  def from_map(map) do
+  @spec from_map(map, [{:atomize_keys, bool}]) :: __MODULE__.t()
+  def from_map(map, options \\ []) do
+    map = if Keyword.get(options, :atomize_keys, false), do:  atomize_keys(map), else: map
     %__MODULE__{props: map, halt: nil, collected_errors: []}
   end
 

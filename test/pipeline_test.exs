@@ -10,6 +10,18 @@ defmodule ElixirPipeline.PipelineTest do
       assert output == {:ok, %{id: 1, name: "some name"}}
     end
 
+    test "from_map: can atomize map keys" do
+      output = Pipeline.from_map(
+                 %{ "id" => 1,
+                   "name" => "some name",
+                   "address" => %{"zip" => "123"},
+                   "attendees" => [%{"name" => "name 1"}, %{"name" => "name 2"}]},
+                 atomize_keys: true)
+               |> Pipeline.to_result()
+
+      assert output == {:ok, %{id: 1, name: "some name", address: %{zip: "123"}, attendees: [%{name: "name 1"}, %{name: "name 2"}]}}
+    end
+
     test "add_value: can add value to pipeline" do
       output = Pipeline.new()
                |> Pipeline.add_value(:id, 1)
