@@ -56,10 +56,16 @@ defmodule ElixirPipeline.Pipeline do
         {:ok, updated_props} -> %{ pipeline | props: updated_props}
         {:error,      error} -> case Keyword.get(options, :collect) do
                                   :error     -> pipeline |> collect_error(error)
-                                  :error_end -> pipeline |> promote_collect_error_to_error(error)
                                   _else      -> pipeline |> put_error(error)
                                 end
       end
+    end)
+  end
+
+  def collect_error_to_error(%__MODULE__{collected_errors: collected_errors} = pipeline) do
+    pipeline
+    |> if_continue(fn %__MODULE__{} = pipeline ->
+      %{pipeline | collected_errors: []} |> put_error(collected_errors)
     end)
   end
 
@@ -86,7 +92,7 @@ defmodule ElixirPipeline.Pipeline do
   @spec to_result(__MODULE__.t(), any()) :: {:error, any()} | {:ok, any()}
   def to_result(%__MODULE__{props: props, halt: halt}, output_names \\ []) do
     case halt do
-      [error: error] -> {:error, error}
+      [error: error] -> {:error, {error, props}}
       _else          -> {:ok, build_result(props, output_names)}
     end
   end
@@ -140,13 +146,6 @@ defmodule ElixirPipeline.Pipeline do
   defp collect_error(%__MODULE__{collected_errors: collected_errors} = pipeline, error) do
     errors = if is_list(error), do: error, else: [error]
     %{pipeline | collected_errors: collected_errors ++ errors}
-  end
-
-  defp promote_collect_error_to_error(%__MODULE__{collected_errors: collected_errors} = pipeline, error) do
-    pipeline
-    |> if_continue(fn %__MODULE__{} = pipeline ->
-      %{pipeline | collected_errors: []} |> put_error(collected_errors ++ [error])
-    end)
   end
 
   @spec stop_pipeline(__MODULE__.t) :: __MODULE__.t
