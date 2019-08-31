@@ -69,6 +69,11 @@ defmodule ElixirPipeline.Pipeline do
     end)
   end
 
+  def print(%__MODULE__{} = pipeline, prefix \\ "Pipeline:") do
+    IO.puts("#{prefix}#{inspect(pipeline)}")
+    pipeline
+  end
+
   defp apply_in(props, path, last_prop_path, func, input_names, output_names) do
 
     cur_prop_name   = path |> Enum.at(0)
