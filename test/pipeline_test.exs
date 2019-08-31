@@ -323,6 +323,7 @@ defmodule ElixirPipeline.PipelineTest do
                         |> Pipeline.add_step(
                              fn %{id: _id} -> {:error, "Id cannot be blank"} end,
                              inputs: [:id],
+                             outputs: [:id],
                              collect: :error)
                       |> Pipeline.add_step(
                            fn %{name: _name} -> {:ok, "someName"} end,
@@ -388,6 +389,36 @@ defmodule ElixirPipeline.PipelineTest do
       %Pipeline{props: cur_props} = pipeline
 
       assert error == {["Id cannot be blank"], cur_props}
+    end
+
+    test "add_step: can collect errors and succeed if all succeed" do
+      event = %{
+        id: "1",
+        name: nil,
+        address: %{street: "some street", zip: nil},
+        attendees: [%{name: nil}, %{address: %{street: "some street", zip: nil}}]}
+
+      {:ok, result} = Pipeline.new()
+                      |> Pipeline.add_value(:id, nil)
+                      |> Pipeline.add_value(:event, event)
+                      |> Pipeline.add_step(
+                           fn %{id: _id} -> {:ok, "1"} end,
+                           inputs: [:id],
+                           outputs: [:id],
+                           collect: :error)
+                      |> Pipeline.add_step(
+                           fn _name, _zip -> {:ok, "123"} end,
+                           with: [:event, :address, :zip],
+                           collect: :error)
+                      |> Pipeline.collect_error_to_error()
+                      |> Pipeline.to_result()
+
+      assert result == %{
+               event: %{
+                 address: %{street: "some street", zip: "123"},
+                 attendees: [
+                   %{name: nil},
+                   %{address: %{street: "some street", zip: nil}}], id: "1", name: nil}, id: "1"}
     end
   end
 end

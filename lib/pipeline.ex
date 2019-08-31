@@ -65,7 +65,10 @@ defmodule ElixirPipeline.Pipeline do
   def collect_error_to_error(%__MODULE__{collected_errors: collected_errors} = pipeline) do
     pipeline
     |> if_continue(fn %__MODULE__{} = pipeline ->
-      %{pipeline | collected_errors: []} |> put_error(collected_errors)
+      case collected_errors do
+        []    -> pipeline
+        _else -> %{pipeline | collected_errors: []} |> put_error(collected_errors)
+      end
     end)
   end
 
