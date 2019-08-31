@@ -131,16 +131,6 @@ defmodule ElixirPipeline.Pipeline do
     if is_list(output_names), do: output_names, else: [output_names]
   end
 
-  @spec parse_func_call_result(any) :: result_type
-  defp parse_func_call_result(func_result) do
-    case func_result do
-      :ok             -> :ok
-      {:ok,    value} -> {:ok, value}
-      {:error, error} -> {:error, error}
-      value           -> {:ok, value}
-    end
-  end
-
   @spec put_prop(__MODULE__.t, atom | binary, any) :: __MODULE__.t
   defp put_prop(%__MODULE__{props: props} = pipeline, prop_name, value) do %{pipeline | props: props |> Map.put(prop_name, value)} end
 
@@ -158,9 +148,17 @@ defmodule ElixirPipeline.Pipeline do
 
   @spec map_success(result_type, (any -> result_type)) :: result_type
   defp map_success(result, func) do
+    parse_result = fn result ->
+        case result do
+          :ok             -> :ok
+          {:ok,    value} -> {:ok, value}
+          {:error, error} -> {:error, error}
+          value           -> {:ok, value}
+        end
+    end
     case result do
-      :ok             -> func.(nil) |> parse_func_call_result()
-      {:ok,    value} -> func.(value) |> parse_func_call_result()
+      :ok             -> func.(nil) |> parse_result.()
+      {:ok,    value} -> func.(value) |> parse_result.()
       {:error, error} -> {:error, error}
     end
   end

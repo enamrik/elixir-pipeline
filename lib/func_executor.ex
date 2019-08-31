@@ -10,7 +10,7 @@ defmodule ElixirPipeline.FuncExecutor do
   def exec(%__MODULE__{func: func, input_names: input_names} = executor, prop, options \\ []) do
     inputs =
       case input_names do
-        []    -> [single: prop]
+        []    -> prop
         _else ->
           prop = prop || %{}
           input_names
@@ -27,14 +27,7 @@ defmodule ElixirPipeline.FuncExecutor do
       end
     end
 
-    return_value =
-      case inputs do
-        [single: input] -> call_func_with_inputs.(func, input)
-
-        _else           -> if length(Map.keys(inputs)) == 0,
-                              do:   func.() |> parse_func_call_result(),
-                              else: call_func_with_inputs.(func, inputs)
-      end
+    return_value = call_func_with_inputs.(func, inputs)
 
     case Keyword.get(options, :process_return, true) do
       true  -> executor |> process_return(prop, return_value)

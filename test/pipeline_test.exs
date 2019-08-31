@@ -297,8 +297,20 @@ defmodule ElixirPipeline.PipelineTest do
       assert output[:event] == %{id: "1", addresses: [ "some street new", "some street 2 new"]}
     end
 
-    test "add_step: can collect errors from multiple step failures" do
+    test "add_step: can return native success" do
+      event = %{id: "1", addresses: [ "some street", "some street 2"]}
 
+      {:ok, output} = Pipeline.new()
+                      |> Pipeline.add_value(:event, event)
+                      |> Pipeline.add_step(
+                           fn address ->  {:ok, "#{address} new"} end,
+                           with: [:event, [each: :addresses]])
+                      |> Pipeline.to_result()
+
+      assert output[:event] == %{id: "1", addresses: [ "some street new", "some street 2 new"]}
+    end
+
+    test "add_step: can collect errors from multiple step failures" do
       event = %{
         id: "1",
         name: nil,
@@ -313,9 +325,10 @@ defmodule ElixirPipeline.PipelineTest do
                              inputs: [:id],
                              collect: :error)
                       |> Pipeline.add_step(
-                           fn %{name: _name} -> {:error, "Name cannot be blank"} end,
+                           fn %{name: _name} -> {:ok, "someName"} end,
                            with: :event,
                            inputs: [:name],
+                           outputs: [:name],
                            collect: :error)
                       |> Pipeline.add_step(
                            fn %{street: _street} -> {:error, "Street cannot be blank"} end,
@@ -343,7 +356,6 @@ defmodule ElixirPipeline.PipelineTest do
 
       assert error == {[
                "Id cannot be blank",
-               "Name cannot be blank",
                "Street cannot be blank",
                "Attendee name cannot be blank",
                "Attendee name cannot be blank",
