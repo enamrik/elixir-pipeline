@@ -1,16 +1,32 @@
 defmodule ElixirPipeline.Pipeline do
-  defstruct [:props,:halt, :collected_errors]
+  defstruct [:props,:halt, :collected_errors, :steps_info, :id, :name, :log_level, :logger]
 
-  @type t :: %__MODULE__{props: map, halt: any}
+  @type t :: %__MODULE__{props: map, halt: any, collected_errors: list, steps_info: map, id: String.t, log_level: atom}
   @type result_type :: :ok|{:ok, any}|{:error, any}
   @type action :: (-> :ok|{:ok, any}|{:error, any})|(map -> :ok|{:ok, any}|{:error, any})
 
   import ElixirPipeline.AtomizeKeys, only: [atomize_keys: 1]
   alias ElixirPipeline.FuncExecutor
+  require Logger
 
   @spec new() :: __MODULE__.t()
-  def new() do
-    %__MODULE__{props: %{}, halt: nil, collected_errors: []}
+  def new(options \\ []) do
+    name      = Keyword.get(options, :name, "pipeline")
+    id        = Keyword.get(options, :id)
+    log_level = Keyword.get(options, :log_level, :none)
+    logger    = Keyword.get(options, :logger, %{info:  &Logger.info/1,
+                                                debug: &Logger.debug/1,
+                                                warn:  &Logger.warn/1,
+                                                error: &Logger.error/1})
+    %__MODULE__{
+      props: %{},
+      halt: nil,
+      collected_errors: [],
+      steps_info: %{count: 0},
+      id: id || UUID.uuid4(),
+      name: name,
+      log_level: log_level,
+      logger: logger}
   end
 
   @spec from_map(map, [{:atomize_keys, bool}]) :: __MODULE__.t()
@@ -59,6 +75,7 @@ defmodule ElixirPipeline.Pipeline do
                                   _else      -> pipeline |> put_error(error)
                                 end
       end
+      |> log_step_info(Keyword.get(options, :name), input_names, output_names, result)
     end)
   end
 
@@ -182,5 +199,42 @@ defmodule ElixirPipeline.Pipeline do
       []    -> {:ok,   results}
       _else -> {:error, errors}
     end
+  end
+
+  defp log_step_info(
+         %__MODULE__{
+           log_level:  log_level,
+           logger:    logger,
+           steps_info: %{count: count} = steps_info,
+           id:         pipeline_id,
+           name:       pipeline_name} = pipeline,
+         name, inputs, outputs, result) do
+
+    count = count + 1
+    name  = name || "step"
+    name  = "#{name}:#{count}" <>
+            ":( #{inputs |> Enum.join(",")} -> #{outputs |> Enum.join(",")} )" <>
+            ":#{pipeline_name}(#{pipeline_id})"
+
+    success_logger = case log_level do
+      :debug -> logger[:debug]
+      :info  -> logger[:info]
+      :none  -> fn _ -> {} end
+    end
+    error_logger = case log_level do
+      :none  -> fn _ -> {} end
+      _      -> logger[:error]
+    end
+
+    log_success = fn-> success_logger.("#{name}:success") end
+    log_failure = fn error -> error_logger.("#{name}:failure:#{inspect(error)}") end
+
+    case result do
+      {:ok,    _} -> log_success.()
+      :ok         -> log_success.()
+      {:error, e} -> log_failure.(e)
+      :error      -> log_failure.(nil)
+    end
+    %{pipeline | steps_info: %{steps_info | count: count}}
   end
 end
