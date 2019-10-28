@@ -13,7 +13,7 @@ defmodule ElixirPipeline.Pipeline do
   def new(options \\ []) do
     name      = Keyword.get(options, :name, "pipeline")
     id        = Keyword.get(options, :id)
-    log_level = Keyword.get(options, :log_level, :none)
+    log_level = Keyword.get(options, :log_level, :debug)
     logger    = Keyword.get(options, :logger, %{info:  &Logger.info/1,
                                                 debug: &Logger.debug/1,
                                                 warn:  &Logger.warn/1,
