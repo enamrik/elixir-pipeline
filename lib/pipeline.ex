@@ -32,7 +32,7 @@ defmodule ElixirPipeline.Pipeline do
   @spec from_map(map, [{:atomize_keys, bool}]) :: __MODULE__.t()
   def from_map(map, options \\ []) do
     map = if Keyword.get(options, :atomize_keys, false), do:  atomize_keys(map), else: map
-    %__MODULE__{props: map, halt: nil, collected_errors: []}
+    %{new(options) | props: map}
   end
 
   @spec add_value(__MODULE__.t(), atom | binary, any()) :: __MODULE__.t()
